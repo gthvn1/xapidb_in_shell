@@ -1,0 +1,3 @@
+- The idea is to parse XAPI DB and generates an HTML file to render it.
+- We use `js_of_ocaml`
+- We want to have reference and uuid clickable to navigate into the DB
