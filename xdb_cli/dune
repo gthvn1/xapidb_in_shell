@@ -1,5 +1,5 @@
 (executable
  (name main)
  (public_name xapi_db)
- (libraries xdb_core xmlm)
+ (libraries xdb_core xmlm tyxml)
  (package xapi_db))
