@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name xapi_db)
+ (package xapi_db)
+ (libraries xapi_db))

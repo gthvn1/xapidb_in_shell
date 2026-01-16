@@ -1,3 +1,3 @@
-- The idea is to parse XAPI DB and generates an HTML file to render it.
-- We use `js_of_ocaml`
-- We want to have reference and uuid clickable to navigate into the DB
+- The idea is to parse XAPI DB, generates a in memory relational database and
+  offers a prompt to query about `OpaqueRef`.
+- Run: `dune exec xapi_db`

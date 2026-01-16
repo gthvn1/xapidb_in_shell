@@ -1,4 +1,0 @@
-(library
- (name xdb_core)
- (modules database)
- (libraries xmlm))
