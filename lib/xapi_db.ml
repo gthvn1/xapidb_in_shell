@@ -9,34 +9,41 @@ module type Db = sig
 end
 
 module XapiDb : Db = struct
-  type t = unit
+  type elt = unit
+
+  type t = (string, elt) Hashtbl.t
 
   let ping () = "pong"
 
   let from_file fname =
+    let htable : (string, elt) Hashtbl.t = Hashtbl.create 128 in
     Printf.printf "Trying to read %s\n" fname ;
     let ic = open_in fname in
     let input = Xmlm.make_input (`Channel ic) in
-    let rec read_loop () =
+    (* The goal of the loop is to fill the Hashtbl where the key is the OpaqueRef
+       of an element. An element is basically the row but we will see as we go. *)
+    let rec read_loop stack =
       try
         (* input as a side effect *)
-        let () =
+        let new_stack =
           match Xmlm.input input with
-          | `Dtd name -> (
-            match name with
-            | None ->
-                print_endline "Dtd found"
-            | Some n ->
-                Printf.printf "Dtd %s found" n )
+          | `Dtd _ ->
+              stack (* can be safely ignored *)
           | `El_start (tag_name, _tag_attr_lst) ->
-              let uri, local = tag_name in
-              Printf.printf "Start uri: <%s>, local: <%s>\n" uri local
+              let _, local = tag_name in
+              local :: stack
           | `El_end ->
-              print_endline "End found"
-          | `Data data ->
-              Printf.printf "Data <%s> found\n" (data |> String.trim)
+              if List.is_empty stack then (
+                Printf.printf "List is empty\n" ;
+                stack )
+              else List.tl stack
+          | `Data _ ->
+              Printf.printf "Data found\n" ;
+              stack
         in
-        read_loop ()
+        if not (List.is_empty stack) then
+          Printf.printf "Current head is %s\n" (List.hd stack) ;
+        read_loop new_stack
       with Xmlm.Error ((line, col), err) ->
         if Xmlm.eoi input then print_endline "EOF reached"
         else (
@@ -44,5 +51,5 @@ module XapiDb : Db = struct
             (Xmlm.error_message err) ;
           exit 1 )
     in
-    read_loop () ; In_channel.close ic
+    read_loop [] ; In_channel.close ic ; htable
 end
