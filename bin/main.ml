@@ -18,4 +18,6 @@ let _sample_xml : string =
 </database>
 |}
 
-let () = Xapi_db.hello ()
+module XapiDb = Xapi_db.XapiDb
+
+let () = XapiDb.ping () |> print_endline
