@@ -6,6 +6,11 @@ module type Db = sig
 
   val from_file : string -> t
   (** [from_file fname] reads XML from [fname] and build a relational database *)
+
+  val size : t -> int
+  (** [size t] returns the number of entries in the database *)
+
+  val get_ref : t -> ref:string -> (string * string) list
 end
 
 module XapiDb : Db = struct
@@ -14,6 +19,11 @@ module XapiDb : Db = struct
   type t = (string, elts) Hashtbl.t
 
   let ping () = "pong"
+
+  let size = Hashtbl.length
+
+  let get_ref t ~ref =
+    match Hashtbl.find_opt t ref with None -> [] | Some l -> l
 
   let table_name (attr : Xmlm.attribute list) : string =
     if List.length attr <> 1 then (
@@ -30,7 +40,6 @@ module XapiDb : Db = struct
           acc
       | x :: xs ->
           let (_uri, local), name = x in
-          Printf.printf "row_elements: <%s> <%s>\n" local name ;
           loop ((local, name) :: acc) xs
     in
     loop [] attr
@@ -49,7 +58,6 @@ module XapiDb : Db = struct
 
   let from_file fname =
     let htable : (string, elts) Hashtbl.t = Hashtbl.create 128 in
-    Printf.printf "Trying to read %s\n" fname ;
     let ic = open_in fname in
     let input = Xmlm.make_input (`Channel ic) in
     (* The goal of the loop is to fill the Hashtbl where the key is the OpaqueRef
@@ -79,6 +87,7 @@ module XapiDb : Db = struct
                   let () =
                     match Hashtbl.find_opt htable ref with
                     | None ->
+                        Printf.printf "adding ref %s\n" ref ;
                         Hashtbl.add htable ref (("table", tbname) :: elements)
                     | Some _ ->
                         Printf.eprintf "Ref %s is duplicated" ref
@@ -90,18 +99,14 @@ module XapiDb : Db = struct
               | _ ->
                   failwith (Printf.sprintf "%s is not handled" local) )
           | `El_end ->
-              if List.is_empty stack then (
-                Printf.printf "List is empty\n" ;
-                stack )
-              else List.tl stack
+              if List.is_empty stack then stack else List.tl stack
           | `Data _ ->
-              Printf.printf "Data found\n" ;
+              (* Printf.printf "Data found\n" ;*)
               stack
         in
         read_loop new_stack
       with Xmlm.Error ((line, col), err) ->
-        if Xmlm.eoi input then print_endline "EOF reached"
-        else (
+        if not (Xmlm.eoi input) then (
           Printf.eprintf "[%d, %d]: Got exception: %s" line col
             (Xmlm.error_message err) ;
           exit 1 )
