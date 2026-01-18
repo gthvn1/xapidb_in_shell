@@ -68,6 +68,9 @@ let find_ref db ref =
     Printf.printf "OpaqueRef %s:\n" ref;
     List.iter (fun e -> Printf.printf "  %s\n" (XapiDb.elt_to_string e)) l)
 
+let repl _db =
+        failwith "TODO: repl time !!!"
+
 let () =
   let args = get_args () in
 
@@ -87,12 +90,5 @@ let () =
 
   (* Todo: Read all refs, start a REPL if no refs are passed *)
   match List.nth_opt args.refs 0 with
-  | None ->
-      (* Let's try to find an ref in sample *)
-      let ref_sample = "082d1948-c3f7-91ae-8793-568c9e888810" in
-      find_ref db ref_sample;
-
-      (* Let's try to find a ref that is valid in state *)
-      let ref_state = "0c847c7c-955f-5635-e5c3-d6fa97621627" in
-      find_ref db ref_state
-  | Some ref -> find_ref db ref
+  | None -> repl db
+  | Some _ -> List.iter (fun ref -> find_ref db ref) args.refs
