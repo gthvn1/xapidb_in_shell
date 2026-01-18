@@ -69,7 +69,11 @@ let find_ref db ref =
     List.iter (fun e -> Printf.printf "  %s\n" (XapiDb.elt_to_string e)) l)
 
 let repl _db =
-        failwith "TODO: repl time !!!"
+  print_string "xapi_db> ";
+  flush stdout;
+  match In_channel.input_line stdin with
+  | None -> Printf.printf "What the heck!!!"
+  | Some s -> Printf.printf "echo: <%s>" s
 
 let () =
   let args = get_args () in
