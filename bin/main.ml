@@ -83,10 +83,9 @@ let () =
         with_ssh_cat ~user:args.user ~host ~remote_db:args.fname
           XapiDb.from_channel
   in
-  (* We are expecting an XML file as input *)
   Printf.printf "Found %d entries in DB\n" (XapiDb.size db);
 
-  (* Todo: Read all refs *)
+  (* Todo: Read all refs, start a REPL if no refs are passed *)
   match List.nth_opt args.refs 0 with
   | None ->
       (* Let's try to find an ref in sample *)
