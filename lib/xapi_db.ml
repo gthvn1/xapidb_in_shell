@@ -87,7 +87,6 @@ module XapiDb : Db = struct
                   let () =
                     match Hashtbl.find_opt htable ref with
                     | None ->
-                        Printf.printf "adding ref %s\n" ref ;
                         Hashtbl.add htable ref (("table", tbname) :: elements)
                     | Some _ ->
                         Printf.eprintf "Ref %s is duplicated" ref
