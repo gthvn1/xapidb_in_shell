@@ -4,7 +4,7 @@ This tool parses a XAPI database XML file, builds an in-memory relational databa
 and provides a prompt oriented interface to explore the database using `OpaqueRef`
 identifiers
 
-# Usage
+## Usage
 
 - Show help:
 ```sh
