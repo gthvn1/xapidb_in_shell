@@ -2,9 +2,6 @@ module type Db = sig
   type e (* an element of the database *)
   type t (* the database *)
 
-  val ping : unit -> string
-  (** [ping] is just use for testing *)
-
   val from_channel : in_channel -> t
   (** [from_file ic] reads XML from the input channel and build a relational
       database *)
@@ -65,7 +62,6 @@ module XapiDb : Db = struct
   (* ---------------
         Interface 
      -------------- *)
-  let ping () = "pong"
   let size = Hashtbl.length
 
   (*List.iter (fun e -> Printf.printf "  %-20s\t%s\n" k (XapiDb.elt_to_string v) l))*)
