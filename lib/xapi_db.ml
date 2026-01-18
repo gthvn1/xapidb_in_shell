@@ -5,7 +5,8 @@ module type Db = sig
   (** [ping] is just use for testing *)
 
   val from_file : string -> t
-  (** [from_file fname] reads XML from [fname] and build a relational database *)
+  (** [from_file fname] reads XML from [fname] and build a relational database
+  *)
 
   val size : t -> int
   (** [size t] returns the number of entries in the database *)
@@ -15,11 +16,9 @@ end
 
 module XapiDb : Db = struct
   type elts = (string * string) list
-
   type t = (string, elts) Hashtbl.t
 
   let ping () = "pong"
-
   let size = Hashtbl.length
 
   let get_ref t ~ref =
@@ -28,32 +27,31 @@ module XapiDb : Db = struct
   let table_name (attr : Xmlm.attribute list) : string =
     if List.length attr <> 1 then (
       Printf.eprintf "For table only one attribute name is expected, got %d\n"
-        (List.length attr) ;
-      exit 1 ) ;
+        (List.length attr);
+      exit 1);
     let (_, local), table_name = List.hd attr in
-    assert (local = "name") ;
+    assert (local = "name");
     table_name
 
   let row_elements (attr : Xmlm.attribute list) : elts =
     let rec loop acc = function
-      | [] ->
-          acc
+      | [] -> acc
       | x :: xs ->
           let (_uri, local), name = x in
           loop ((local, name) :: acc) xs
     in
     loop [] attr
 
-  (** [extract_ref elements] return the string that corresponds to "ref" or "_ref".
-      It raises an expection if ref is not found. *)
+  (** [extract_ref elements] return the string that corresponds to "ref" or
+      "_ref". It raises an expection if ref is not found. *)
   let extract_ref (elements : elts) : string =
     let _, opaqueref =
       List.find (fun (s, _) -> s = "ref" || s == "_ref") elements
     in
     (* Just keep the UUID *)
     let s = String.split_on_char ':' opaqueref in
-    assert (List.hd s = "OpaqueRef") ;
-    assert (List.length s = 2) ;
+    assert (List.hd s = "OpaqueRef");
+    assert (List.length s = 2);
     List.(tl s |> hd)
 
   let from_file fname =
@@ -67,38 +65,34 @@ module XapiDb : Db = struct
         (* input as a side effect *)
         let new_stack =
           match Xmlm.input input with
-          | `Dtd _ ->
-              stack (* can be safely ignored *)
+          | `Dtd _ -> stack (* can be safely ignored *)
           | `El_start (tag_name, tag_attr_lst) -> (
               let _, local = tag_name in
               match local with
-              | "database" | "manifest" | "pair" ->
-                  stack (* can be skipped *)
+              | "database" | "manifest" | "pair" -> stack (* can be skipped *)
               | "table" ->
                   let tname = table_name tag_attr_lst in
                   tname :: stack
               | "row" ->
                   (* Row is always part of a table and we are not expecting nested table *)
-                  assert (List.length stack = 1) ;
+                  assert (List.length stack = 1);
                   let tbname = List.hd stack in
                   let elements = row_elements tag_attr_lst in
                   let ref = extract_ref elements in
+
                   (* We can now insert the element, we should not have duplicated ref *)
                   let () =
                     match Hashtbl.find_opt htable ref with
                     | None ->
                         Hashtbl.add htable ref (("table", tbname) :: elements)
-                    | Some _ ->
-                        Printf.eprintf "Ref %s is duplicated" ref
+                    | Some _ -> Printf.eprintf "Ref %s is duplicated" ref
                   in
                   (* We need to add the row because when reaching `El_end we will remove
                      it, and we will have the table on top. It works because we don't have
                      nested element. *)
                   local :: stack
-              | _ ->
-                  failwith (Printf.sprintf "%s is not handled" local) )
-          | `El_end ->
-              if List.is_empty stack then stack else List.tl stack
+              | _ -> failwith (Printf.sprintf "%s is not handled" local))
+          | `El_end -> if List.is_empty stack then stack else List.tl stack
           | `Data _ ->
               (* Printf.printf "Data found\n" ;*)
               stack
@@ -107,10 +101,12 @@ module XapiDb : Db = struct
       with Xmlm.Error ((line, col), err) ->
         if not (Xmlm.eoi input) then (
           Printf.eprintf "[%d, %d]: Got exception: %s" line col
-            (Xmlm.error_message err) ;
-          exit 1 )
+            (Xmlm.error_message err);
+          exit 1)
     in
-    read_loop [] ; In_channel.close ic ; htable
+    read_loop [];
+    In_channel.close ic;
+    htable
 end
 
 let _sample_xml : string =
