@@ -30,6 +30,15 @@ let get_args () =
       print_string usage;
       exit 1
 
+(* TODO: allow user host and remote as parameters and so we will be able to 
+         call the XapiDb.from_channel remotely *)
+let _with_ssh_cat ~user ~host ~remote_db f =
+  let cmd = Printf.sprintf "ssh %s@%s cat %s" user host remote_db in
+  let ic = Unix.open_process_in cmd in
+  Fun.protect
+    ~finally:(fun () -> ignore (Unix.close_process_in ic))
+    (fun () -> f ic)
+
 let find_ref db ref =
   let l = XapiDb.get_ref db ~ref in
   Printf.printf "----------------------------------------\n";
@@ -41,7 +50,9 @@ let find_ref db ref =
 let () =
   let args = get_args () in
   (* We are expecting an XML file as input *)
-  let db = XapiDb.from_file args.fname in
+  let ic = open_in args.fname in
+  let db = XapiDb.from_channel ic in
+  In_channel.close ic;
   Printf.printf "Found %d entries in DB\n" (XapiDb.size db);
 
   match args.ref with

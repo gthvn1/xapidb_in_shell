@@ -4,9 +4,9 @@ module type Db = sig
   val ping : unit -> string
   (** [ping] is just use for testing *)
 
-  val from_file : string -> t
-  (** [from_file fname] reads XML from [fname] and build a relational database
-  *)
+  val from_channel : in_channel -> t
+  (** [from_file ic] reads XML from the input channel and build a relational
+      database *)
 
   val size : t -> int
   (** [size t] returns the number of entries in the database *)
@@ -54,9 +54,8 @@ module XapiDb : Db = struct
     assert (List.length s = 2);
     List.(tl s |> hd)
 
-  let from_file fname =
+  let from_channel ic =
     let htable : (string, elts) Hashtbl.t = Hashtbl.create 128 in
-    let ic = open_in fname in
     let input = Xmlm.make_input (`Channel ic) in
     (* The goal of the loop is to fill the Hashtbl where the key is the OpaqueRef
        of an element. An element is basically the row but we will see as we go. *)
@@ -105,7 +104,6 @@ module XapiDb : Db = struct
           exit 1)
     in
     read_loop [];
-    In_channel.close ic;
     htable
 end
 
