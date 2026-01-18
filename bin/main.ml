@@ -66,7 +66,7 @@ let find_ref db ref =
   if List.length l = 0 then Printf.printf "OpaqueRef <%s> not found\n" ref
   else (
     Printf.printf "OpaqueRef %s:\n" ref;
-    List.iter (fun (k, v) -> Printf.printf "  %-20s\t%s\n" k v) l)
+    List.iter (fun e -> Printf.printf "  %s\n" (XapiDb.elt_to_string e)) l)
 
 let () =
   let args = get_args () in

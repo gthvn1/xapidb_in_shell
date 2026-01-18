@@ -1,5 +1,6 @@
 module type Db = sig
-  type t
+  type e (* an element of the database *)
+  type t (* the database *)
 
   val ping : unit -> string
   (** [ping] is just use for testing *)
@@ -11,18 +12,22 @@ module type Db = sig
   val size : t -> int
   (** [size t] returns the number of entries in the database *)
 
-  val get_ref : t -> ref:string -> (string * string) list
+  val get_ref : t -> ref:string -> e list
+  val elt_to_string : e -> string
 end
 
 module XapiDb : Db = struct
-  type elts = (string * string) list
-  type t = (string, elts) Hashtbl.t
+  type value = String of string | Ref of string (* OpaqueRef UUID only *)
+  type e = string * value
+  type t = (string, e list) Hashtbl.t
 
-  let ping () = "pong"
-  let size = Hashtbl.length
-
-  let get_ref t ~ref =
-    match Hashtbl.find_opt t ref with None -> [] | Some l -> l
+  (* ---------------
+        Helpers
+     -------------- *)
+  let parse_value s =
+    match String.split_on_char ':' s with
+    | [ "OpaqueRef"; uuid ] -> Ref uuid
+    | _ -> String s
 
   let table_name (attr : Xmlm.attribute list) : string =
     if List.length attr <> 1 then (
@@ -33,29 +38,48 @@ module XapiDb : Db = struct
     assert (local = "name");
     table_name
 
-  let row_elements (attr : Xmlm.attribute list) : elts =
+  (** [row_elements attr] return a list of tuple where the first element will be
+      the key and the second element is a value. Example:
+      - host="OpaqueRef:3e.." -> ("host", Ref("3e.."))
+      - type="host_internal" -> ("type", String("host_internal")) *)
+  let row_elements (attr : Xmlm.attribute list) : e list =
     let rec loop acc = function
       | [] -> acc
       | x :: xs ->
           let (_uri, local), name = x in
-          loop ((local, name) :: acc) xs
+          loop ((local, parse_value name) :: acc) xs
     in
     loop [] attr
 
-  (** [extract_ref elements] return the string that corresponds to "ref" or
-      "_ref". It raises an expection if ref is not found. *)
-  let extract_ref (elements : elts) : string =
+  (** [peek_ref elements] return the string that corresponds to "ref" or "_ref".
+      It is the OpaqueRef of the object (element) itself. It raises an expection
+      if ref is not found. *)
+  let peek_ref (elements : e list) : string =
     let _, opaqueref =
       List.find (fun (s, _) -> s = "ref" || s == "_ref") elements
     in
-    (* Just keep the UUID *)
-    let s = String.split_on_char ':' opaqueref in
-    assert (List.hd s = "OpaqueRef");
-    assert (List.length s = 2);
-    List.(tl s |> hd)
+    match opaqueref with
+    | Ref uuid -> uuid
+    | String s -> failwith (Printf.sprintf "OpaqueRef is expected, got %s" s)
+
+  (* ---------------
+        Interface 
+     -------------- *)
+  let ping () = "pong"
+  let size = Hashtbl.length
+
+  (*List.iter (fun e -> Printf.printf "  %-20s\t%s\n" k (XapiDb.elt_to_string v) l))*)
+  let elt_to_string elt =
+    let s1, s2 =
+      match elt with s1, String s2 -> (s1, s2) | s1, Ref uuid -> (s1, uuid)
+    in
+    Printf.sprintf "%-20s\t%s" s1 s2
+
+  let get_ref t ~ref =
+    match Hashtbl.find_opt t ref with None -> [] | Some l -> l
 
   let from_channel ic =
-    let htable : (string, elts) Hashtbl.t = Hashtbl.create 128 in
+    let htable : (string, e list) Hashtbl.t = Hashtbl.create 128 in
     let input = Xmlm.make_input (`Channel ic) in
     (* The goal of the loop is to fill the Hashtbl where the key is the OpaqueRef
        of an element. An element is basically the row but we will see as we go. *)
@@ -77,13 +101,14 @@ module XapiDb : Db = struct
                   assert (List.length stack = 1);
                   let tbname = List.hd stack in
                   let elements = row_elements tag_attr_lst in
-                  let ref = extract_ref elements in
+                  let ref = peek_ref elements in
 
                   (* We can now insert the element, we should not have duplicated ref *)
                   let () =
                     match Hashtbl.find_opt htable ref with
                     | None ->
-                        Hashtbl.add htable ref (("table", tbname) :: elements)
+                        Hashtbl.add htable ref
+                          (("table", String tbname) :: elements)
                     | Some _ -> Printf.eprintf "Ref %s is duplicated" ref
                   in
                   (* We need to add the row because when reaching `El_end we will remove
