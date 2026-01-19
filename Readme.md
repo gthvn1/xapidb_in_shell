@@ -4,6 +4,12 @@ This tool parses a XAPI database XML file, builds an in-memory relational databa
 and provides a prompt oriented interface to explore the database using `OpaqueRef`
 identifiers
 
+## Requirements
+
+- `unix` : https://ocaml.org/manual/5.4/api/Unix.html
+- `xmlm` : https://erratique.ch/software/xmlm
+- `linenoise`: https://github.com/ocaml-community/ocaml-linenoise
+
 ## Usage
 
 - Show help:
