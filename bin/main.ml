@@ -80,4 +80,9 @@ let () =
   (* Todo: Read all refs, start a REPL if no refs are passed *)
   match List.nth_opt args.refs 0 with
   | None -> Repl.start db
-  | Some _ -> List.iter (fun ref -> print_endline "---------"; Helpers.print_ref db ref) args.refs
+  | Some _ ->
+      List.iter
+        (fun ref ->
+          print_endline "---------";
+          Helpers.print_ref db ref)
+        args.refs
