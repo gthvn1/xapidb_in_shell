@@ -40,9 +40,9 @@ dune exec xapi_db -- -host 10.1.38.11 /var/lib/xcp/state.db
   - [ ] `show <opaqueref>`: display all fields of the given `OpaqueRef`
   - [ ] `follow <field>`: naviate to a referenced object
   - [ ] `back`: return to the previous object
-  - [ ] `where`: show the current `OpaqueRef`
-  - [ ] `help`: display available commands
-  - [ ] `exit`: exit the REPL
+  - [x] `where`: show the current `OpaqueRef`
+  - [x] `help`: display available commands
+  - [x] `exit`: exit the REPL
 
 ## Examples
 
