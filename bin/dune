@@ -2,4 +2,4 @@
  (name main)
  (public_name xapi_db)
  (package xapi_db)
- (libraries unix xapi_db))
+ (libraries unix linenoise xapi_db))

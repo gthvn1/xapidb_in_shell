@@ -37,19 +37,22 @@ module Cmd = struct
 end
 
 let start (db : XapiDb.t) =
+  LNoise.history_load ~filename:"history.txt" |> ignore;
+  LNoise.history_set ~max_length:100 |> ignore;
   let rec loop () =
-    print_string "xapi_db> ";
-    flush_all ();
-    match In_channel.input_line stdin with
+    match LNoise.linenoise "xapi_db> " with
     | None -> Printf.printf "Bye bye\n"
     | Some s -> (
+        LNoise.history_add s |> ignore;
         match Cmd.from_string s with
         | Some Cmd.Quit -> Printf.printf "Bye\n"
         | Some c ->
             Cmd.handle db c;
+            flush_all ();
             loop ()
         | None ->
-            Printf.eprintf "Unknown <%s>\n" s;
+            Printf.eprintf "Unknown <%s>\n%!" s;
             loop ())
   in
+  Printf.printf "%s%!" help;
   loop ()
