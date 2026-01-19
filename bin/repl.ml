@@ -3,13 +3,12 @@ module XapiDb = Xapi_db.XapiDb
 type repl_state = { current : string option; history : string list }
 
 let help =
-  {|HELP
-  - `show <opaqueref>`  : display all fields of the given `OpaqueRef`
-  - `follow <opaqueref>`: navigate to a referenced object
-  - `back`              : return to the previous object
-  - `where`             : show the current `OpaqueRef`
-  - `help`              : display available commands
-  - `quit`              : quit the REPL
+  {|show <opaqueref>   : display all fields of the given `OpaqueRef`
+follow <opaqueref> : navigate to a referenced object
+back               : return to the previous object
+where              : show the current `OpaqueRef`
+help               : display available commands
+quit               : quit the REPL
 |}
 
 module Cmd = struct
@@ -61,19 +60,17 @@ let start (db : XapiDb.t) =
   LNoise.history_load ~filename:"history.txt" |> ignore;
   LNoise.history_set ~max_length:100 |> ignore;
   (* Set completions for commands *)
-  LNoise.set_completion_callback (fun line_so_far comp ->
-      try
-        match line_so_far.[0] with
-        | 's' -> LNoise.add_completion comp "show"
-        | 'f' -> LNoise.add_completion comp "follow"
-        | 'b' -> LNoise.add_completion comp "back"
-        | 'w' -> LNoise.add_completion comp "where"
-        | 'h' -> LNoise.add_completion comp "help"
-        | 'q' -> LNoise.add_completion comp "quit"
-        | _ -> ()
-      with _ -> ());
+  LNoise.set_completion_callback (fun line comp ->
+      let commands = [ "show"; "follow"; "back"; "where"; "help"; "quit" ] in
+      List.iter
+        (fun cmd ->
+          if String.starts_with ~prefix:line cmd then
+            LNoise.add_completion comp cmd)
+        commands);
+
+  (* User input loop *)
   let rec loop state =
-    match LNoise.linenoise "xapi_db> " with
+    match LNoise.linenoise "> " with
     | None -> Printf.printf "Bye bye\n"
     | Some s -> (
         LNoise.history_add s |> ignore;
@@ -91,6 +88,6 @@ let start (db : XapiDb.t) =
             flush_all ();
             loop state)
   in
-  Printf.printf "%s%!" help;
+  Printf.printf "XAPI DB 0.1, type 'help' for more information\n%!";
   let init_state = { current = None; history = [] } in
   loop init_state
