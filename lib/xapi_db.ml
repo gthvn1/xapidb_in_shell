@@ -67,12 +67,16 @@ module XapiDb : Db = struct
   (*List.iter (fun e -> Printf.printf "  %-20s\t%s\n" k (XapiDb.elt_to_string v) l))*)
   let elt_to_string elt =
     let s1, s2 =
-      match elt with s1, String s2 -> (s1, s2) | s1, Ref uuid -> (s1, uuid)
+      match elt with
+      | s1, String s2 -> (s1, s2)
+      | s1, Ref uuid -> (s1, uuid)
     in
     Printf.sprintf "%-20s\t%s" s1 s2
 
   let get_ref t ~ref =
-    match Hashtbl.find_opt t ref with None -> [] | Some l -> l
+    match Hashtbl.find_opt t ref with
+    | None -> []
+    | Some l -> l
 
   let from_channel ic =
     let htable : (string, e list) Hashtbl.t = Hashtbl.create 128 in

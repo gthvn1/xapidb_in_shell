@@ -1,10 +1,10 @@
 module XapiDb = Xapi_db.XapiDb
 
 type args = {
-  fname : string;
-  refs : string list;
-  user : string option;
-  host : string option;
+    fname : string
+  ; refs : string list
+  ; user : string option
+  ; host : string option
 }
 
 let get_args () =
@@ -26,8 +26,8 @@ let get_args () =
 
   let speclist =
     [
-      ("-user", Arg.Set_string user, "Set username for remote access");
-      ("-host", Arg.Set_string host, "Set hostname or IP for remote access");
+      ("-user", Arg.Set_string user, "Set username for remote access")
+    ; ("-host", Arg.Set_string host, "Set hostname or IP for remote access")
     ]
   in
 
@@ -41,10 +41,10 @@ let get_args () =
   (* anon_fun builds inputs in reverse order, file is the last position *)
   let inputs = List.rev !inputs in
   {
-    fname = List.hd inputs;
-    refs = List.tl inputs;
-    user = (if String.length !user = 0 then None else Some !user);
-    host = (if String.length !host = 0 then None else Some !host);
+    fname = List.hd inputs
+  ; refs = List.tl inputs
+  ; user = (if String.length !user = 0 then None else Some !user)
+  ; host = (if String.length !host = 0 then None else Some !host)
   }
 
 let with_ssh_cat ~user ~host ~remote_db f =
@@ -68,13 +68,6 @@ let print_ref db ref =
     Printf.printf "OpaqueRef %s:\n" ref;
     List.iter (fun e -> Printf.printf "  %s\n" (XapiDb.elt_to_string e)) l)
 
-let repl _db =
-  print_string "xapi_db> ";
-  flush stdout;
-  match In_channel.input_line stdin with
-  | None -> Printf.printf "What the heck!!!"
-  | Some s -> Printf.printf "echo: <%s>" s
-
 let () =
   let args = get_args () in
 
@@ -94,5 +87,5 @@ let () =
 
   (* Todo: Read all refs, start a REPL if no refs are passed *)
   match List.nth_opt args.refs 0 with
-  | None -> repl db
+  | None -> Repl.start db
   | Some _ -> List.iter (fun ref -> print_ref db ref) args.refs

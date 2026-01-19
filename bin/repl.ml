@@ -1,0 +1,55 @@
+module XapiDb = Xapi_db.XapiDb
+
+let help =
+  {|HELP
+  - `show <opaqueref>`  : display all fields of the given `OpaqueRef`
+  - `follow <opaqueref>`: navigate to a referenced object
+  - `back`              : return to the previous object
+  - `where`             : show the current `OpaqueRef`
+  - `help`              : display available commands
+  - `quit`              : quit the REPL
+|}
+
+module Cmd = struct
+  type cmd = Show of string | Follow of string | Back | Help | Quit
+
+  let from_string (s : string) : cmd option =
+    let words s =
+      let open String in
+      let s = s |> trim |> lowercase_ascii |> split_on_char ' ' in
+      List.filter (fun w -> w <> "") s
+    in
+    match words s with
+    | [ "show"; ref ] -> Some (Show ref)
+    | [ "follow"; ref ] -> Some (Follow ref)
+    | [ "back" ] -> Some Back
+    | [ "help" ] -> Some Help
+    | [ "exit" ] | [ "quit" ] -> Some Quit
+    | _ -> None
+
+  let handle cmd =
+    match cmd with
+    | Show ref -> Printf.printf "TODO: Show %s\n" ref
+    | Follow ref -> Printf.printf "TODO: follow %s\n" ref
+    | Back -> Printf.printf "TODO: back\n"
+    | Help -> print_string help
+    | Quit -> ()
+end
+
+let start (_db : XapiDb.t) =
+  let rec loop () =
+    print_string "xapi_db> ";
+    flush_all ();
+    match In_channel.input_line stdin with
+    | None -> Printf.printf "Bye bye\n"
+    | Some s -> (
+        match Cmd.from_string s with
+        | Some Cmd.Quit -> Printf.printf "Bye\n"
+        | Some c ->
+            Cmd.handle c;
+            loop ()
+        | None ->
+            Printf.eprintf "Unknown <%s>\n" s;
+            loop ())
+  in
+  loop ()
