@@ -1,5 +1,7 @@
 module XapiDb = Xapi_db.XapiDb
 
+type repl_state = { current : string option; history : string list }
+
 let help =
   {|HELP
   - `show <opaqueref>`  : display all fields of the given `OpaqueRef`
@@ -39,12 +41,18 @@ module Cmd = struct
         | "exit" | "quit" -> Ok Quit
         | _ -> Error UnknownArgs)
 
-  let handle db cmd =
+  let handle db state cmd =
     match cmd with
     | Show ref -> Helpers.print_ref db ref
     | Follow ref -> Printf.printf "TODO: follow %s\n" ref
     | Back -> Printf.printf "TODO: back\n"
-    | Where -> Printf.printf "TODO: where\n"
+    | Where -> (
+        match state.history with
+        | [] -> Printf.printf "No opaqueref\n%!"
+        | [ ref ] -> Printf.printf "%s%!" ref
+        | ref :: xs ->
+            List.fold_left (fun acc s -> acc ^ " -> " ^ s) ref xs
+            |> Printf.printf "%s\n%!")
     | Help -> print_string help
     | Quit -> ()
 end
@@ -64,7 +72,7 @@ let start (db : XapiDb.t) =
         | 'q' -> LNoise.add_completion comp "quit"
         | _ -> ()
       with _ -> ());
-  let rec loop () =
+  let rec loop state =
     match LNoise.linenoise "xapi_db> " with
     | None -> Printf.printf "Bye bye\n"
     | Some s -> (
@@ -72,16 +80,17 @@ let start (db : XapiDb.t) =
         match Cmd.from_string s with
         | Error UnknownArgs ->
             Printf.eprintf "Unknown <%s>\n%!" s;
-            loop ()
+            loop state
         | Error MissingArgs ->
             Printf.eprintf "Argument is missing\n%!";
-            loop ()
-        | Error Empty -> loop ()
+            loop state
+        | Error Empty -> loop state
         | Ok Cmd.Quit -> Printf.printf "Bye\n"
         | Ok c ->
-            Cmd.handle db c;
+            Cmd.handle db state c;
             flush_all ();
-            loop ())
+            loop state)
   in
   Printf.printf "%s%!" help;
-  loop ()
+  let init_state = { current = None; history = [] } in
+  loop init_state
