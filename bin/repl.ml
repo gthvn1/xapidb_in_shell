@@ -27,16 +27,22 @@ module Cmd = struct
     | [ "exit" ] | [ "quit" ] -> Some Quit
     | _ -> None
 
-  let handle cmd =
+  let handle db cmd =
     match cmd with
-    | Show ref -> Printf.printf "TODO: Show %s\n" ref
+    | Show ref ->
+        let l = XapiDb.get_ref db ~ref in
+        Printf.printf "----------------------------------------\n";
+        if List.length l = 0 then Printf.printf "OpaqueRef <%s> not found\n" ref
+        else (
+          Printf.printf "OpaqueRef %s:\n" ref;
+          List.iter (fun e -> Printf.printf "  %s\n" (XapiDb.elt_to_string e)) l)
     | Follow ref -> Printf.printf "TODO: follow %s\n" ref
     | Back -> Printf.printf "TODO: back\n"
     | Help -> print_string help
     | Quit -> ()
 end
 
-let start (_db : XapiDb.t) =
+let start (db : XapiDb.t) =
   let rec loop () =
     print_string "xapi_db> ";
     flush_all ();
@@ -46,7 +52,7 @@ let start (_db : XapiDb.t) =
         match Cmd.from_string s with
         | Some Cmd.Quit -> Printf.printf "Bye\n"
         | Some c ->
-            Cmd.handle c;
+            Cmd.handle db c;
             loop ()
         | None ->
             Printf.eprintf "Unknown <%s>\n" s;
