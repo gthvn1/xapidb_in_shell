@@ -11,22 +11,42 @@ let help =
 |}
 
 module Cmd = struct
-  type cmd = Show of string | Follow of string | Back | Where | Help | Quit
+  type cmd =
+    | Show of string
+    | Follow of string
+    | Back
+    | Where
+    | Help
+    | Quit
+    | Unknown
+    | Invalid
 
-  let from_string (s : string) : cmd option =
+  let from_string (s : string) : cmd =
     let words s =
       let open String in
       let s = s |> trim |> lowercase_ascii |> split_on_char ' ' in
       List.filter (fun w -> w <> "") s
     in
     match words s with
-    | [ "show"; ref ] -> Some (Show ref)
-    | [ "follow"; ref ] -> Some (Follow ref)
-    | [ "back" ] -> Some Back
-    | [ "where" ] -> Some Where
-    | [ "help" ] -> Some Help
-    | [ "exit" ] | [ "quit" ] -> Some Quit
-    | _ -> None
+    | [] -> Unknown
+    | cmd :: args -> (
+        match cmd with
+        | "show" ->
+            (* TODO: in fact we can take a list of refs *)
+            if List.length args <> 1 then (
+              Printf.printf "One reference is expected with show\n%!";
+              Invalid)
+            else Show (List.hd args)
+        | "follow" ->
+            if List.length args <> 1 then (
+              Printf.printf "One reference is expected with follow\n%!";
+              Invalid)
+            else Follow (List.hd args)
+        | "back" -> Back
+        | "where" -> Where
+        | "help" -> Help
+        | "exit" | "quit" -> Quit
+        | _ -> Unknown)
 
   let handle db cmd =
     match cmd with
@@ -35,7 +55,7 @@ module Cmd = struct
     | Back -> Printf.printf "TODO: back\n"
     | Where -> Printf.printf "TODO: where\n"
     | Help -> print_string help
-    | Quit -> ()
+    | Quit | Unknown | Invalid -> ()
 end
 
 let start (db : XapiDb.t) =
@@ -58,13 +78,13 @@ let start (db : XapiDb.t) =
     | Some s -> (
         LNoise.history_add s |> ignore;
         match Cmd.from_string s with
-        | Some Cmd.Quit -> Printf.printf "Bye\n"
-        | Some c ->
+        | Cmd.Quit -> Printf.printf "Bye\n"
+        | Cmd.Unknown ->
+            Printf.eprintf "Unknown <%s>\n%!" s;
+            loop ()
+        | c ->
             Cmd.handle db c;
             flush_all ();
-            loop ()
-        | None ->
-            Printf.eprintf "Unknown <%s>\n%!" s;
             loop ())
   in
   Printf.printf "%s%!" help;
