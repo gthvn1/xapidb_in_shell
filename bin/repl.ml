@@ -29,13 +29,7 @@ module Cmd = struct
 
   let handle db cmd =
     match cmd with
-    | Show ref ->
-        let l = XapiDb.get_ref db ~ref in
-        Printf.printf "----------------------------------------\n";
-        if List.length l = 0 then Printf.printf "OpaqueRef <%s> not found\n" ref
-        else (
-          Printf.printf "OpaqueRef %s:\n" ref;
-          List.iter (fun e -> Printf.printf "  %s\n" (XapiDb.elt_to_string e)) l)
+    | Show ref -> Helpers.print_ref db ref
     | Follow ref -> Printf.printf "TODO: follow %s\n" ref
     | Back -> Printf.printf "TODO: back\n"
     | Help -> print_string help
