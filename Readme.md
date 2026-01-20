@@ -2,7 +2,7 @@
 
 This tool parses a XAPI database XML file, builds an in-memory relational database,
 and provides a prompt oriented interface to explore the database using `OpaqueRef`
-identifiers
+identifiers.
 
 ## Requirements
 
@@ -14,19 +14,19 @@ identifiers
 
 - Show help:
 ```sh
-dune exec xapi_db -- -help
+dune exec xapidb_in_shell -- -help
 ```
 - Open a REPL using local **sample.xml** file:
 ```sh
-dune exec xapi_db -- sample.xml
+dune exec xapidb_in_shell -- sample.xml
 ```
 - Query a specific `OpaqueRef` from **sample.xml**:
 ```sh
-dune exec xapi_db -- sample.xml 3ec68fc0-3c60-ffa4-e499-6142c369ea39
+dune exec xapidb_in_shell -- sample.xml 3ec68fc0-3c60-ffa4-e499-6142c369ea39
 ```
 - Use a remote database:
 ```sh
-dune exec xapi_db -- -host 10.1.38.11 /var/lib/xcp/state.db
+dune exec xapidb_in_shell -- -host 10.1.38.11 /var/lib/xcp/state.db
 ```
 
 ## Status
@@ -48,7 +48,7 @@ dune exec xapi_db -- -host 10.1.38.11 /var/lib/xcp/state.db
 
 - With multiple `OpaqueRef`:
 ```sh
-❯ dune exec xapi_db -- sample.xml 082d1948-c3f7-91ae-8793-568c9e888810 3ec68fc0-3c60-ffa4-e499-6142c369ea39
+❯ dune exec xapidb_in_shell -- sample.xml 082d1948-c3f7-91ae-8793-568c9e888810 3ec68fc0-3c60-ffa4-e499-6142c369ea39
 Entering directory '/home/gthouvenin/devel/ocaml/ocaml_sandkasten'
 Leaving directory '/home/gthouvenin/devel/ocaml/ocaml_sandkasten'
 Found 3 entries in DB
@@ -70,7 +70,7 @@ OpaqueRef 3ec68fc0-3c60-ffa4-e499-6142c369ea39:
 
 - Without `OpaqueRef` it start the REPL
 ```sh
-❯ dune exec xapi_db -- sample.xml
+❯ dune exec xapidb_in_shell -- sample.xml
 Entering directory '/home/gthouvenin/devel/ocaml/ocaml_sandkasten'
 Leaving directory '/home/gthouvenin/devel/ocaml/ocaml_sandkasten'
 Found 3 entries in DB

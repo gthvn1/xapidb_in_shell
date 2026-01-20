@@ -1,5 +1,5 @@
 (executable
  (name main)
- (public_name xapi_db)
- (package xapi_db)
- (libraries unix linenoise xapi_db))
+ (public_name xapidb_in_shell)
+ (package xapidb_in_shell)
+ (libraries unix linenoise xapidb_lib))

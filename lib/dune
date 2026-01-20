@@ -1,4 +1,4 @@
 (library
- (name xapi_db)
- (modules xapi_db)
+ (name xapidb_lib)
+ (modules xapidb)
  (libraries xmlm))

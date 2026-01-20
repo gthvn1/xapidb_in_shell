@@ -1,4 +1,4 @@
-module XapiDb = Xapi_db.XapiDb
+module XapiDb = Xapidb_lib.Xapidb.XapiDb
 
 type args = {
     fname : string

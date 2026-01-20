@@ -1,4 +1,4 @@
-module XapiDb = Xapi_db.XapiDb
+module XapiDb = Xapidb_lib.Xapidb.XapiDb
 
 type repl_state = { current : string option; history : string list }
 

@@ -1,4 +1,4 @@
-module XapiDb = Xapi_db.XapiDb
+module XapiDb = Xapidb_lib.Xapidb.XapiDb
 
 let print_ref db ref =
   let l = XapiDb.get_ref db ~ref in
