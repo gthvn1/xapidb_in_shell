@@ -1,59 +1,75 @@
 module XapiDb = Xapidb_lib.Xapidb.XapiDb
 
-type repl_state = { current : string option; history : string list }
+type repl_state = { root : string option; path : string list }
 
 let help =
-  {|show <opaqueref>   : display all fields of the given `OpaqueRef`
-follow <opaqueref> : navigate to a referenced object
-back               : return to the previous object
-where              : show the current `OpaqueRef`
-help               : display available commands
-quit               : quit the REPL
+  {|<opaqueref>     : set `OpaqueRef` as the root
+ls              : display all attributes of `OpaqueRef` as root
+cd <opaqueref>  : navigate to an attribute `OpaqueRef`
+cd ..           : return to the previous object
+path            : show the current list of `OpaqueRef` we followed
+help            : display available commands
+quit            : quit the REPL
 |}
 
 module Cmd = struct
   type error = Empty | UnknownArgs | MissingArgs
-  type cmd = Show of string | Follow of string | Back | Where | Help | Quit
+  type t = Cd of string | Help | Ls | Path | Quit | Set of string
 
-  let from_string (s : string) : (cmd, error) result =
+  (* use for autocompletion *)
+  let commands = [ "cd"; "help"; "ls"; "path"; "quit"; "set" ]
+
+  let from_string (s : string) : (t, error) result =
     let words s =
       let open String in
       let s = s |> trim |> lowercase_ascii |> split_on_char ' ' in
       List.filter (fun w -> w <> "") s
     in
+    let is_digit c =
+      Char.code '0' <= Char.code c && Char.code c <= Char.code '9'
+    in
     match words s with
     | [] -> Error Empty
     | cmd :: args -> (
         match cmd with
-        | "show" -> (
-            (* TODO: in fact we can probably take a list of refs and not only one *)
+        | "ls" -> Ok Ls
+        | "cd" -> (
             match args with
-            | [ ref ] -> Ok (Show ref)
+            | [ ref ] -> Ok (Cd ref)
             | _ -> Error MissingArgs)
-        | "follow" -> (
-            match args with
-            | [ ref ] -> Ok (Follow ref)
-            | _ -> Error MissingArgs)
-        | "back" -> Ok Back
-        | "where" -> Ok Where
+        | "path" -> Ok Path
         | "help" -> Ok Help
         | "exit" | "quit" -> Ok Quit
+        | cmd when is_digit cmd.[0] -> Ok (Set cmd)
         | _ -> Error UnknownArgs)
 
-  let handle db state cmd =
+  let handle (db : XapiDb.t) (state : repl_state) (cmd : t) : repl_state =
     match cmd with
-    | Show ref -> Helpers.print_ref db ref
-    | Follow ref -> Printf.printf "TODO: follow %s\n" ref
-    | Back -> Printf.printf "TODO: back\n"
-    | Where -> (
-        match state.history with
-        | [] -> Printf.printf "No opaqueref\n%!"
-        | [ ref ] -> Printf.printf "%s%!" ref
-        | ref :: xs ->
-            List.fold_left (fun acc s -> acc ^ " -> " ^ s) ref xs
-            |> Printf.printf "%s\n%!")
-    | Help -> print_string help
-    | Quit -> ()
+    | Cd ref ->
+        Printf.printf "TODO: follow %s\n%!" ref;
+        state
+    | Help ->
+        print_string help;
+        state
+    | Ls ->
+        let () =
+          match state.root with
+          | None -> Printf.printf "No opaqueref set\n%!"
+          | Some ref -> Helpers.print_ref db ref
+        in
+        state
+    | Path ->
+        let () =
+          match state.path with
+          | [] -> Printf.printf "Empty\n%!"
+          | [ ref ] -> Printf.printf "%s%!" ref
+          | ref :: xs ->
+              List.fold_left (fun acc s -> acc ^ " -> " ^ s) ref xs
+              |> Printf.printf "%s\n%!"
+        in
+        state
+    | Set ref -> { root = Some ref; path = [] }
+    | Quit -> state
 end
 
 let start (db : XapiDb.t) =
@@ -61,16 +77,20 @@ let start (db : XapiDb.t) =
   LNoise.history_set ~max_length:100 |> ignore;
   (* Set completions for commands *)
   LNoise.set_completion_callback (fun line comp ->
-      let commands = [ "show"; "follow"; "back"; "where"; "help"; "quit" ] in
       List.iter
         (fun cmd ->
           if String.starts_with ~prefix:line cmd then
             LNoise.add_completion comp cmd)
-        commands);
+        Cmd.commands);
 
   (* User input loop *)
   let rec loop state =
-    match LNoise.linenoise "> " with
+    let prompt =
+      match state.root with
+      | None -> "> "
+      | Some ref -> ref ^ "> "
+    in
+    match LNoise.linenoise prompt with
     | None -> Printf.printf "Bye bye\n"
     | Some s -> (
         LNoise.history_add s |> ignore;
@@ -84,10 +104,10 @@ let start (db : XapiDb.t) =
         | Error Empty -> loop state
         | Ok Cmd.Quit -> Printf.printf "Bye\n"
         | Ok c ->
-            Cmd.handle db state c;
+            let new_state = Cmd.handle db state c in
             flush_all ();
-            loop state)
+            loop new_state)
   in
   Printf.printf "XAPI DB 0.1, type 'help' for more information\n%!";
-  let init_state = { current = None; history = [] } in
+  let init_state = { root = None; path = [] } in
   loop init_state
