@@ -1,7 +1,7 @@
 module XapiDb = Xapidb_lib.Xapidb.XapiDb
 
-let print_ref db ref =
-  let l = XapiDb.get_ref db ~ref in
+let print_attributes db ref =
+  let l = XapiDb.get_attrs db ~ref in
   if List.length l = 0 then Printf.printf "OpaqueRef <%s> not found\n" ref
   else (
     Printf.printf "OpaqueRef %s:\n" ref;

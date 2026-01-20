@@ -84,5 +84,5 @@ let () =
       List.iter
         (fun ref ->
           print_endline "---------";
-          Helpers.print_ref db ref)
+          Helpers.print_attributes db ref)
         args.refs

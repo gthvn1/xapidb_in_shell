@@ -9,14 +9,15 @@ module type Db = sig
   val size : t -> int
   (** [size t] returns the number of entries in the database *)
 
-  val get_ref : t -> ref:string -> e list
+  val get_attrs : t -> ref:string -> e list
+  val get_opaquerefs : t -> string list
   val elt_to_string : e -> string
 end
 
 module XapiDb : Db = struct
   type value = String of string | Ref of string (* OpaqueRef UUID only *)
   type e = string * value
-  type t = (string, e list) Hashtbl.t
+  type t = { by_ref : (string, e list) Hashtbl.t; refs : string list }
 
   (* ---------------
         Helpers
@@ -62,7 +63,7 @@ module XapiDb : Db = struct
   (* ---------------
         Interface 
      -------------- *)
-  let size = Hashtbl.length
+  let size t = Hashtbl.length t.by_ref
 
   (*List.iter (fun e -> Printf.printf "  %-20s\t%s\n" k (XapiDb.elt_to_string v) l))*)
   let elt_to_string elt =
@@ -73,10 +74,12 @@ module XapiDb : Db = struct
     in
     Printf.sprintf "%-20s\t%s" s1 s2
 
-  let get_ref t ~ref =
-    match Hashtbl.find_opt t ref with
+  let get_attrs t ~ref =
+    match Hashtbl.find_opt t.by_ref ref with
     | None -> []
     | Some l -> l
+
+  let get_opaquerefs t = t.refs
 
   let from_channel ic =
     let htable : (string, e list) Hashtbl.t = Hashtbl.create 128 in
@@ -129,7 +132,7 @@ module XapiDb : Db = struct
           exit 1)
     in
     read_loop [];
-    htable
+    { by_ref = htable; refs = htable |> Hashtbl.to_seq_keys |> List.of_seq }
 end
 
 let _sample_xml : string =

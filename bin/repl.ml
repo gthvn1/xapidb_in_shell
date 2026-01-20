@@ -55,7 +55,7 @@ module Cmd = struct
         let () =
           match state.root with
           | None -> Printf.printf "No opaqueref set\n%!"
-          | Some ref -> Helpers.print_ref db ref
+          | Some ref -> Helpers.print_attributes db ref
         in
         state
     | Path ->
@@ -81,7 +81,7 @@ let start (db : XapiDb.t) =
         (fun cmd ->
           if String.starts_with ~prefix:line cmd then
             LNoise.add_completion comp cmd)
-        Cmd.commands);
+        (Cmd.commands @ XapiDb.get_opaquerefs db));
 
   (* User input loop *)
   let rec loop state =
