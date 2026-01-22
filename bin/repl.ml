@@ -76,11 +76,23 @@ let start (db : XapiDb.t) =
   LNoise.history_set ~max_length:100 |> ignore;
   (* Set completions for commands *)
   LNoise.set_completion_callback (fun line comp ->
+      let line', patterns =
+        (* Currently only "cd" command accepts opaqueref *)
+        if String.starts_with ~prefix:"cd" line then
+          (* Don't forget to remove the first two characters *)
+          let size = String.length line in
+          (* We need to remove "cd" to correctly do the autocompletion when 
+             matching with starts_with. Thus, to have the right display in the
+             prompt we prepend "cd" to each opaquerefs. *)
+          let p = List.map (fun s -> "cd " ^ s) (XapiDb.get_opaquerefs db) in
+          (String.(sub line 2 (size - 2) |> trim), p)
+        else (line, Cmd.commands)
+      in
       List.iter
-        (fun cmd ->
-          if String.starts_with ~prefix:line cmd then
-            LNoise.add_completion comp cmd)
-        (Cmd.commands @ XapiDb.get_opaquerefs db));
+        (fun s ->
+          if String.starts_with ~prefix:line' s then
+            LNoise.add_completion comp s)
+        patterns);
 
   (* User input loop *)
   let rec loop state =
