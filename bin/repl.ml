@@ -11,9 +11,11 @@ exit|quit      : quit the REPL
 help           : display available commands
 |}
 
+let shrink str = if String.length str < 8 then str else String.sub str 0 7
+
 module Cmd = struct
   type error = Empty | UnknownArgs | MissingArgs
-  type t = Cd of string | Help | Ls | Path | Quit | Set of string
+  type t = Cd of string | Help | Ls | Pwd | Quit | Set of string
 
   (* use for autocompletion *)
   let commands = [ "cd"; "exit"; "help"; "ls"; "pwd"; "quit"; "set" ]
@@ -36,7 +38,7 @@ module Cmd = struct
             match args with
             | [ ref ] -> Ok (Cd ref)
             | _ -> Error MissingArgs)
-        | "pwd" -> Ok Path
+        | "pwd" -> Ok Pwd
         | "help" -> Ok Help
         | "exit" | "quit" -> Ok Quit
         | cmd when is_digit cmd.[0] -> Ok (Set cmd)
@@ -45,25 +47,39 @@ module Cmd = struct
   let handle (db : XapiDb.t) (state : repl_state) (cmd : t) : repl_state =
     match cmd with
     | Cd ref ->
-        Printf.printf "TODO: follow %s\n%!" ref;
-        state
+        if XapiDb.is_opaqueref ~ref db then
+          match state.root with
+          | None -> { root = Some ref; path = [] }
+          | Some r -> { root = Some ref; path = r :: state.path }
+        else if ref = ".." then
+          match state.root with
+          | None -> state
+          | Some _ ->
+              if state.path = [] then { root = None; path = [] }
+              else
+                { root = Some (List.hd state.path); path = List.tl state.path }
+        else (
+          Printf.printf "%s is not a valid opaqueref\n%!" ref;
+          state)
     | Help ->
         print_string help;
         state
     | Ls ->
         let () =
           match state.root with
-          | None -> Printf.printf "No opaqueref set\n%!"
+          | None -> Printf.printf "no opaqueref set\n%!"
           | Some ref -> Helpers.print_attributes db ref
         in
         state
-    | Path ->
+    | Pwd ->
         let () =
           match state.path with
-          | [] -> Printf.printf "Empty\n%!"
-          | [ ref ] -> Printf.printf "%s%!" ref
+          | [] -> Printf.printf "empty\n%!"
+          | [ ref ] -> Printf.printf "%s\n%!" (shrink ref)
           | ref :: xs ->
-              List.fold_left (fun acc s -> acc ^ " -> " ^ s) ref xs
+              List.fold_left
+                (fun acc s -> acc ^ " -> " ^ shrink s)
+                (shrink ref) xs
               |> Printf.printf "%s\n%!"
         in
         state
@@ -99,7 +115,7 @@ let start (db : XapiDb.t) =
     let prompt =
       match state.root with
       | None -> "> "
-      | Some ref -> ref ^ "> "
+      | Some ref -> shrink ref ^ "> "
     in
     match LNoise.linenoise prompt with
     | None -> Printf.printf "Bye bye\n"

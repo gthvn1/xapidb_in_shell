@@ -12,6 +12,7 @@ module type Db = sig
   val get_attrs : t -> ref:string -> e list
   val get_opaquerefs : t -> string list
   val elt_to_string : e -> string
+  val is_opaqueref : t -> ref:string -> bool
 end
 
 module XapiDb : Db = struct
@@ -79,6 +80,7 @@ module XapiDb : Db = struct
     | None -> []
     | Some l -> l
 
+  let is_opaqueref t ~(ref : string) = Hashtbl.mem t.by_ref ref
   let get_opaquerefs t = t.refs
 
   let from_channel ic =
