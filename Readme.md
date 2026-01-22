@@ -37,11 +37,10 @@ dune exec xapidb_in_shell -- -host 10.1.38.11 /var/lib/xcp/state.db
 
 ## Planned REPL commands
 - The goal is to provide an interactive shell with the following commands:
-  - [ ] `<opaqueref>`: set `OpaqueRef` as the root
-  - [ ] `ls`: display all fields of the given `OpaqueRef`
-  - [ ] `cd <field>`: naviate to a referenced object
+  - [ ] `ls`: display all fields of the current `OpaqueRef`
+  - [ ] `cd <opaqueref>`: open the `OpaqueRef`
   - [ ] `cd ..`: naviate up
-  - [x] `path`: show the path we followed
+  - [x] `pwd`: show the path we followed
   - [x] `help`: display available commands
   - [x] `exit`: exit the REPL
 

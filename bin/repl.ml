@@ -3,13 +3,12 @@ module XapiDb = Xapidb_lib.Xapidb.XapiDb
 type repl_state = { root : string option; path : string list }
 
 let help =
-  {|<opaqueref>     : set `OpaqueRef` as the root
-ls              : display all attributes of `OpaqueRef` as root
-cd <opaqueref>  : navigate to an attribute `OpaqueRef`
-cd ..           : return to the previous object
-path            : show the current list of `OpaqueRef` we followed
-help            : display available commands
-quit            : quit the REPL
+  {|cd <opaqueref> : open `OpaqueRef`
+cd ..          : return to the previous `OpaqueRef` if any
+ls             : display all attributes of `OpaqueRef` as root
+pwd            : show the current patch to reach the current `OpaqueRef`
+exit|quit      : quit the REPL
+help           : display available commands
 |}
 
 module Cmd = struct
@@ -17,7 +16,7 @@ module Cmd = struct
   type t = Cd of string | Help | Ls | Path | Quit | Set of string
 
   (* use for autocompletion *)
-  let commands = [ "cd"; "help"; "ls"; "path"; "quit"; "set" ]
+  let commands = [ "cd"; "exit"; "help"; "ls"; "pwd"; "quit"; "set" ]
 
   let from_string (s : string) : (t, error) result =
     let words s =
@@ -37,7 +36,7 @@ module Cmd = struct
             match args with
             | [ ref ] -> Ok (Cd ref)
             | _ -> Error MissingArgs)
-        | "path" -> Ok Path
+        | "pwd" -> Ok Path
         | "help" -> Ok Help
         | "exit" | "quit" -> Ok Quit
         | cmd when is_digit cmd.[0] -> Ok (Set cmd)
