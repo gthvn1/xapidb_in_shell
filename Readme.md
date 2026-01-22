@@ -1,7 +1,7 @@
 ## Description
 
-This tool parses a XAPI database XML file, builds an in-memory relational database,
-and provides a prompt oriented interface to explore the database using `OpaqueRef`
+This tool parses an XAPI database XML file, builds an in-memory relational database,
+and provides a prompt-oriented interface to explore the database using `OpaqueRef`
 identifiers.
 
 ## Requirements
@@ -33,13 +33,13 @@ dune exec xapidb_in_shell -- -host 10.1.38.11 /var/lib/xcp/state.db
 ⚠️ **Work in progress** ⚠️
 - A full interactive REPL is not available yet.
 - Currently, a basic lookup is performed when an `OpaqueRef` is provided.
-- Local and remote database works.
+- Local and remote databases work.
 
 ## Planned REPL commands
 - The goal is to provide an interactive shell with the following commands:
   - [ ] `ls`: display all fields of the current `OpaqueRef`
   - [ ] `cd <opaqueref>`: open the `OpaqueRef`
-  - [ ] `cd ..`: naviate up
+  - [ ] `cd ..`: navigate up
   - [x] `pwd`: show the path we followed
   - [x] `help`: display available commands
   - [x] `exit`: exit the REPL
@@ -68,7 +68,7 @@ OpaqueRef 3ec68fc0-3c60-ffa4-e499-6142c369ea39:
   ref                   3ec68fc0-3c60-ffa4-e499-6142c369ea39
 ```
 
-- Without `OpaqueRef` it start the REPL
+- Without `OpaqueRef` it starts the REPL
 ```sh
 ❯ dune exec xapidb_in_shell -- sample.xml
 Entering directory '/home/gthouvenin/devel/ocaml/ocaml_sandkasten'
