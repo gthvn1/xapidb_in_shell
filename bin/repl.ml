@@ -95,13 +95,11 @@ let start (db : XapiDb.t) =
       let line', patterns =
         (* Currently only "cd" command accepts opaqueref *)
         if String.starts_with ~prefix:"cd" line then
-          (* Don't forget to remove the first two characters *)
-          let size = String.length line in
-          (* We need to remove "cd" to correctly do the autocompletion when 
-             matching with starts_with. Thus, to have the right display in the
-             prompt we prepend "cd" to each opaquerefs. *)
+          (* TODO: If we add extra spaces between "cd" and the opaqueref it will
+                 not match. It's because we are matching "cd <opaqueref>" and
+                 not "cd  <opaqueref>". So we should allow extra spaces. *)
           let p = List.map (fun s -> "cd " ^ s) (XapiDb.get_opaquerefs db) in
-          (String.(sub line 2 (size - 2) |> trim), p)
+          (line, p)
         else (line, Cmd.commands)
       in
       List.iter
