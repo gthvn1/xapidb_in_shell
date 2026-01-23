@@ -29,9 +29,8 @@ let () =
         with_ssh_cat ~user:args.user ~host ~remote_db:args.fname
           XapiDb.from_channel
   in
-  Printf.printf "Found %d entries in DB\n" (XapiDb.size db);
+  Printf.printf "Found %d OpaqueRefs in DB\n" (XapiDb.size db);
 
-  (* Todo: Read all refs, start a REPL if no refs are passed *)
   match List.nth_opt args.refs 0 with
   | None -> XapiShell.start db
   | Some _ ->
