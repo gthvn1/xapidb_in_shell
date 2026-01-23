@@ -15,7 +15,7 @@ let with_ssh_cat ~user ~host ~remote_db f =
     (fun () -> f ic)
 
 let () =
-  let args = XapiShell.Args.read () in
+  let args = Args.read () in
 
   (* Manage local file or remote connection *)
   let db =
