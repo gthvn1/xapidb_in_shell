@@ -1,6 +1,9 @@
 module XapiDb = Xapidb_lib.Xapidb.XapiDb
 
-let shrink str = if String.length str < 8 then str else String.sub str 0 7
+let shrink str =
+  (* Keep the first 8 chars *)
+  let keep = 8 in
+  if String.length str < keep + 1 then str else String.sub str 0 keep
 
 let print_attributes db ref =
   let l = XapiDb.get_attrs db ~ref in
