@@ -1,4 +1,5 @@
 module XapiDb = Xapidb_lib.Xapidb.XapiDb
+module XapiShell = Xapidb_shell
 
 let with_ssh_cat ~user ~host ~remote_db f =
   let cmd =
@@ -14,7 +15,7 @@ let with_ssh_cat ~user ~host ~remote_db f =
     (fun () -> f ic)
 
 let () =
-  let args = Args.read () in
+  let args = XapiShell.Args.read () in
 
   (* Manage local file or remote connection *)
   let db =
@@ -32,10 +33,10 @@ let () =
 
   (* Todo: Read all refs, start a REPL if no refs are passed *)
   match List.nth_opt args.refs 0 with
-  | None -> Repl.start db
+  | None -> XapiShell.Repl.start db
   | Some _ ->
       List.iter
         (fun ref ->
           print_endline "---------";
-          Helpers.print_attributes db ref)
+          XapiShell.Helpers.print_attributes db ref)
         args.refs

@@ -1,0 +1,3 @@
+(library
+ (name xapidb_shell)
+ (libraries linenoise xapidb_lib))

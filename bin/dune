@@ -2,4 +2,4 @@
  (name main)
  (public_name xapidb_in_shell)
  (package xapidb_in_shell)
- (libraries unix linenoise xapidb_lib))
+ (libraries unix xapidb_shell xapidb_lib))
