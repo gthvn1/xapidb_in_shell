@@ -1,138 +1,33 @@
 module XapiDb = Xapidb_lib.Xapidb.XapiDb
 
-type repl_state = { root : string option; path : string list }
-
-let help =
-  {|cd <opaqueref> : open `OpaqueRef`
-cd ..          : return to the previous `OpaqueRef` if any
-ls             : display all attributes of `OpaqueRef` as root
-pwd            : show the current patch to reach the current `OpaqueRef`
-exit|quit      : quit the REPL
-help           : display available commands
-|}
-
-let shrink str = if String.length str < 8 then str else String.sub str 0 7
-
-module Cmd = struct
-  type error = Empty | UnknownArgs | MissingArgs
-  type t = Cd of string | Help | Ls | Pwd | Quit | Set of string
-
-  (* use for autocompletion *)
-  let commands = [ "cd"; "exit"; "help"; "ls"; "pwd"; "quit"; "set" ]
-
-  let from_string (s : string) : (t, error) result =
-    let words s =
-      let open String in
-      let s = s |> trim |> lowercase_ascii |> split_on_char ' ' in
-      List.filter (fun w -> w <> "") s
-    in
-    let is_digit c =
-      Char.code '0' <= Char.code c && Char.code c <= Char.code '9'
-    in
-    match words s with
-    | [] -> Error Empty
-    | cmd :: args -> (
-        match cmd with
-        | "ls" -> Ok Ls
-        | "cd" -> (
-            match args with
-            | [ ref ] -> Ok (Cd ref)
-            | _ -> Error MissingArgs)
-        | "pwd" -> Ok Pwd
-        | "help" -> Ok Help
-        | "exit" | "quit" -> Ok Quit
-        | cmd when is_digit cmd.[0] -> Ok (Set cmd)
-        | _ -> Error UnknownArgs)
-
-  let handle (db : XapiDb.t) (state : repl_state) (cmd : t) : repl_state =
-    match cmd with
-    | Cd ref ->
-        if XapiDb.is_opaqueref ~ref db then
-          match state.root with
-          | None -> { root = Some ref; path = [] }
-          | Some r -> { root = Some ref; path = r :: state.path }
-        else if ref = ".." then
-          match state.root with
-          | None -> state
-          | Some _ ->
-              if state.path = [] then { root = None; path = [] }
-              else
-                { root = Some (List.hd state.path); path = List.tl state.path }
-        else (
-          Printf.printf "%s is not a valid opaqueref\n%!" ref;
-          state)
-    | Help ->
-        print_string help;
-        state
-    | Ls ->
-        let () =
-          match state.root with
-          | None -> Printf.printf "no opaqueref set\n%!"
-          | Some ref -> Helpers.print_attributes db ref
-        in
-        state
-    | Pwd ->
-        let () =
-          match state.path with
-          | [] -> Printf.printf "empty\n%!"
-          | [ ref ] -> Printf.printf "%s\n%!" (shrink ref)
-          | ref :: xs ->
-              List.fold_left
-                (fun acc s -> acc ^ " -> " ^ shrink s)
-                (shrink ref) xs
-              |> Printf.printf "%s\n%!"
-        in
-        state
-    | Set ref -> { root = Some ref; path = [] }
-    | Quit -> state
-end
-
 let start (db : XapiDb.t) =
-  LNoise.history_load ~filename:"history.txt" |> ignore;
-  LNoise.history_set ~max_length:100 |> ignore;
-  (* Set completions for commands *)
-  LNoise.set_completion_callback (fun line comp ->
-      let line', patterns =
-        (* Currently only "cd" command accepts opaqueref *)
-        if String.starts_with ~prefix:"cd" line then
-          (* TODO: If we add extra spaces between "cd" and the opaqueref it will
-                 not match. It's because we are matching "cd <opaqueref>" and
-                 not "cd  <opaqueref>". So we should allow extra spaces. *)
-          let p = List.map (fun s -> "cd " ^ s) (XapiDb.get_opaquerefs db) in
-          (line, p)
-        else (line, Cmd.commands)
-      in
-      List.iter
-        (fun s ->
-          if String.starts_with ~prefix:line' s then
-            LNoise.add_completion comp s)
-        patterns);
+  Completion.init db;
 
   (* User input loop *)
-  let rec loop state =
+  let rec loop (state : State.t) =
     let prompt =
       match state.root with
       | None -> "> "
-      | Some ref -> shrink ref ^ "> "
+      | Some ref -> Helpers.shrink ref ^ "> "
     in
     match LNoise.linenoise prompt with
     | None -> Printf.printf "Bye bye\n"
     | Some s -> (
         LNoise.history_add s |> ignore;
-        match Cmd.from_string s with
-        | Error UnknownArgs ->
+        match Commands.from_string s with
+        | Error Commands.UnknownArgs ->
             Printf.eprintf "Unknown <%s>\n%!" s;
             loop state
-        | Error MissingArgs ->
+        | Error Commands.MissingArgs ->
             Printf.eprintf "Argument is missing\n%!";
             loop state
-        | Error Empty -> loop state
-        | Ok Cmd.Quit -> Printf.printf "Bye\n"
+        | Error Commands.Empty -> loop state
+        | Ok Commands.Quit -> Printf.printf "Bye\n"
         | Ok c ->
-            let new_state = Cmd.handle db state c in
+            let new_state = Commands.handle db state c in
             flush_all ();
             loop new_state)
   in
   Printf.printf "XAPI DB 0.1, type 'help' for more information\n%!";
-  let init_state = { root = None; path = [] } in
+  let init_state : State.t = { root = None; path = [] } in
   loop init_state

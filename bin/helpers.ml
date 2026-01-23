@@ -1,5 +1,7 @@
 module XapiDb = Xapidb_lib.Xapidb.XapiDb
 
+let shrink str = if String.length str < 8 then str else String.sub str 0 7
+
 let print_attributes db ref =
   let l = XapiDb.get_attrs db ~ref in
   if List.length l = 0 then Printf.printf "OpaqueRef <%s> not found\n" ref
