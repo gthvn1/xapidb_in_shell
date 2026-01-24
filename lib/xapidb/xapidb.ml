@@ -121,7 +121,9 @@ module XapiDb : Db = struct
                      nested element. *)
                   local :: stack
               | _ -> failwith (Printf.sprintf "%s is not handled" local))
-          | `El_end -> if List.is_empty stack then stack else List.tl stack
+          | `El_end ->
+              if List.compare_length_with stack 0 = 0 then stack
+              else List.tl stack
           | `Data _ ->
               (* Printf.printf "Data found\n" ;*)
               stack
