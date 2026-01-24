@@ -1,33 +1,58 @@
 module type Db = sig
-  type e (* an element of the database *)
-  type t (* the database *)
+  type e
+  (** An element (attribute key-value pair) of the database *)
+
+  type t
+  (** The database itself *)
 
   val from_channel : in_channel -> t
-  (** [from_file ic] reads XML from the input channel and build a relational
-      database *)
+  (** [from_channel ic] parses an XML database from the input channel [ic] and
+      constructs the database [t]. The XML is expected to have tables containing
+      rows with attributes. Each row must have a "ref" or "_ref" attribute which
+      serves as the unique key. *)
 
   val size : t -> int
-  (** [size t] returns the number of entries in the database *)
+  (** [size t] returns the total number of opaqueref in the database [t] *)
 
   val get_attrs : t -> ref:string -> e list
+  (** [get_attrs t ~ref] returns the list of attributes associated with the
+      opaqueref identified by [ref]. Returns [] if no element with [ref] exists.
+  *)
+
   val get_opaquerefs : t -> string list
+  (** [get_opaquerefs t] returns the list of all opaqueref in database [t] *)
+
   val get_refs_from_table : t -> name:string -> string list
+  (** [get_refs_from_table t name] returns the list of opaqueref belonging to
+      the table named [name]. Returns [] if the table do not have any opqueref.
+  *)
+
+  val get_tables : t -> string list
+  (** [get_tables t] returns the list of all table names available in the
+      database [t] *)
+
   val elt_to_string : e -> string
+  (** [elt_to_string e] converts the element [e] to a human-readable string,
+      showing the attribute name and value. *)
+
   val is_opaqueref : t -> ref:string -> bool
+  (** [is_opaqueref t ~ref] returns true if [ref] exists as a valid opaqueref in
+      database [t], false otherwise. *)
 end
 
 module XapiDb : Db = struct
-  type value = String of string | Ref of string (* OpaqueRef UUID only *)
+  type value = Str of string | Ref of string (* OpaqueRef UUID only *)
   type e = string * value
 
   type t = {
       by_ref : (string, e list) Hashtbl.t
           (** Key is an opaqueref, value is a list of attributes *)
+    ; refs : string list
+          (** List of all opaqueref. It is used for autocompletion *)
     ; by_table : (string, string list) Hashtbl.t
           (** Key is a table name and value is a list of opaqueref that belong
               to table *)
-    ; refs : string list
-          (** List of all opaqueref. It is used for autocompletion *)
+    ; tables : string list  (** List of all tables. Used for autocompletion *)
   }
 
   (* ---------------
@@ -36,7 +61,7 @@ module XapiDb : Db = struct
   let parse_value s =
     match String.split_on_char ':' s with
     | [ "OpaqueRef"; uuid ] -> Ref uuid
-    | _ -> String s
+    | _ -> Str s
 
   let table_name (attr : Xmlm.attribute list) : string =
     if List.length attr <> 1 then (
@@ -47,10 +72,10 @@ module XapiDb : Db = struct
     assert (local = "name");
     table_name
 
-  (** [row_elements attr] return a list of tuple where the first element will be
-      the key and the second element is a value. Example:
+  (** [row_elements attr] returns a list of tuple where the first element will
+      be the key and the second element is a value. Example:
       - host="OpaqueRef:3e.." -> ("host", Ref("3e.."))
-      - type="host_internal" -> ("type", String("host_internal")) *)
+      - type="host_internal" -> ("type", Str("host_internal")) *)
   let row_elements (attr : Xmlm.attribute list) : e list =
     let rec loop acc = function
       | [] -> acc
@@ -60,16 +85,16 @@ module XapiDb : Db = struct
     in
     loop [] attr
 
-  (** [peek_ref elements] return the string that corresponds to "ref" or "_ref".
-      It is the OpaqueRef of the object (element) itself. It raises an expection
-      if ref is not found. *)
+  (** [peek_ref elements] returns the string that corresponds to "ref" or
+      "_ref". It is the OpaqueRef of the object (element) itself. It raises an
+      expection if ref is not found. *)
   let peek_ref (elements : e list) : string =
     let _, opaqueref =
       List.find (fun (s, _) -> s = "ref" || s == "_ref") elements
     in
     match opaqueref with
     | Ref uuid -> uuid
-    | String s -> failwith (Printf.sprintf "OpaqueRef is expected, got %s" s)
+    | Str s -> failwith (Printf.sprintf "OpaqueRef is expected, got %s" s)
 
   (* ---------------
         Interface 
@@ -80,7 +105,7 @@ module XapiDb : Db = struct
   let elt_to_string elt =
     let s1, s2 =
       match elt with
-      | s1, String s2 -> (s1, s2)
+      | s1, Str s2 -> (s1, s2)
       | s1, Ref uuid -> (s1, uuid)
     in
     Printf.sprintf "%-20s\t%s" s1 s2
@@ -93,16 +118,16 @@ module XapiDb : Db = struct
   let is_opaqueref t ~(ref : string) = Hashtbl.mem t.by_ref ref
   let get_opaquerefs t = t.refs
 
-  (** [get_refs_from_table db name] returns the list of opaqueref that are in
-      the database [db] and has [name]. *)
   let get_refs_from_table db ~(name : string) =
     match Hashtbl.find_opt db.by_table name with
     | None -> []
     | Some l -> l
 
+  let get_tables t = t.tables
+
   let from_channel ic =
-    let htable : (string, e list) Hashtbl.t = Hashtbl.create 128 in
-    let table_to_ref : (string, string list) Hashtbl.t = Hashtbl.create 64 in
+    let elements_by_ref : (string, e list) Hashtbl.t = Hashtbl.create 128 in
+    let refs_by_table : (string, string list) Hashtbl.t = Hashtbl.create 64 in
     let input = Xmlm.make_input (`Channel ic) in
     (* The goal of the loop is to fill the Hashtbl where the key is the OpaqueRef
        of an element. An element is basically the row but we will see as we go. *)
@@ -118,6 +143,11 @@ module XapiDb : Db = struct
               | "database" | "manifest" | "pair" -> stack (* can be skipped *)
               | "table" ->
                   let tname = table_name tag_attr_lst in
+                  let () =
+                    match Hashtbl.find_opt refs_by_table tname with
+                    | None -> Hashtbl.add refs_by_table tname []
+                    | _ -> failwith "Duplicated table is not expected"
+                  in
                   tname :: stack
               | "row" ->
                   (* Row is always part of a table and we are not expecting nested table *)
@@ -128,17 +158,19 @@ module XapiDb : Db = struct
 
                   (* We can now insert the element, we should not have duplicated ref *)
                   let () =
-                    match Hashtbl.find_opt htable ref with
+                    match Hashtbl.find_opt elements_by_ref ref with
                     | None ->
-                        Hashtbl.add htable ref
-                          (("table", String tbname) :: elements)
+                        Hashtbl.add elements_by_ref ref
+                          (("table", Str tbname) :: elements)
                     | Some _ -> Printf.eprintf "Ref %s is duplicated" ref
                   in
                   (* And also add the ref to its corresponding table *)
                   let () =
-                    match Hashtbl.find_opt table_to_ref tbname with
-                    | None -> Hashtbl.add table_to_ref tbname [ ref ]
-                    | Some l -> Hashtbl.add table_to_ref tbname (ref :: l)
+                    match Hashtbl.find_opt refs_by_table tbname with
+                    | None ->
+                        failwith
+                          "table should have been registered when discovered"
+                    | Some l -> Hashtbl.add refs_by_table tbname (ref :: l)
                   in
                   (* We need to add the row because when reaching `El_end we will remove
                      it, and we will have the table on top. It works because we don't have
@@ -161,9 +193,10 @@ module XapiDb : Db = struct
     in
     read_loop [];
     {
-      by_ref = htable
-    ; by_table = table_to_ref
-    ; refs = htable |> Hashtbl.to_seq_keys |> List.of_seq
+      by_ref = elements_by_ref
+    ; refs = elements_by_ref |> Hashtbl.to_seq_keys |> List.of_seq
+    ; by_table = refs_by_table
+    ; tables = refs_by_table |> Hashtbl.to_seq_keys |> List.of_seq
     }
 end
 

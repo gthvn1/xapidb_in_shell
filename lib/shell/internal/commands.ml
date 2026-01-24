@@ -59,9 +59,14 @@ let handle (db : XapiDb.t) (state : State.t) (cmd : t) : State.t =
       print_string help;
       state
   | Ls ->
+      (* If there is an opaqueref in root we display its attributes, otherwise we print
+                     the list of tables in the db *)
       let () =
         match state.root with
-        | None -> Printf.printf "no opaqueref set\n%!"
+        | None ->
+            let tables = XapiDb.get_tables db in
+            List.iter (fun s -> Printf.printf "%s\n" s) tables;
+            Printf.printf "\n%!"
         | Some ref -> Helpers.print_attributes db ref
       in
       state
