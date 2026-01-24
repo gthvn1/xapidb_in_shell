@@ -67,13 +67,14 @@ let handle (db : XapiDb.t) (state : State.t) (cmd : t) : State.t =
       state
   | Pwd ->
       let () =
-        match state.path with
-        | [] -> Printf.printf "empty\n%!"
-        | [ ref ] -> Printf.printf "%s\n%!" (Helpers.shrink ref)
-        | ref :: xs ->
+        match state.root, state.path with
+        | None, [] -> Printf.printf "empty\n%!"
+        | None, _ -> failwith "if there is no root then path must be empty"
+        | Some(root), [] -> Printf.printf "%s\n%!" (Helpers.shrink root)
+        | Some(root), path ->
             List.fold_left
-              (fun acc s -> acc ^ " -> " ^ Helpers.shrink s)
-              (Helpers.shrink ref) xs
+              (fun acc s -> acc ^ " <- " ^ Helpers.shrink s)
+              (Helpers.shrink root) path
             |> Printf.printf "%s\n%!"
       in
       state

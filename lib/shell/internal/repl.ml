@@ -7,7 +7,7 @@ let start (db : XapiDb.t) =
   let rec loop (state : State.t) =
     let prompt =
       match state.root with
-      | None -> "> "
+      | None -> "no ref  > "
       | Some ref -> Helpers.shrink ref ^ "> "
     in
     match LNoise.linenoise prompt with
