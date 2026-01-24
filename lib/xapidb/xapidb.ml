@@ -11,6 +11,7 @@ module type Db = sig
 
   val get_attrs : t -> ref:string -> e list
   val get_opaquerefs : t -> string list
+  val get_refs_from_table : t -> name:string -> string list
   val elt_to_string : e -> string
   val is_opaqueref : t -> ref:string -> bool
 end
@@ -18,7 +19,16 @@ end
 module XapiDb : Db = struct
   type value = String of string | Ref of string (* OpaqueRef UUID only *)
   type e = string * value
-  type t = { by_ref : (string, e list) Hashtbl.t; refs : string list }
+
+  type t = {
+      by_ref : (string, e list) Hashtbl.t
+          (** Key is an opaqueref, value is a list of attributes *)
+    ; by_table : (string, string list) Hashtbl.t
+          (** Key is a table name and value is a list of opaqueref that belong
+              to table *)
+    ; refs : string list
+          (** List of all opaqueref. It is used for autocompletion *)
+  }
 
   (* ---------------
         Helpers
@@ -83,8 +93,16 @@ module XapiDb : Db = struct
   let is_opaqueref t ~(ref : string) = Hashtbl.mem t.by_ref ref
   let get_opaquerefs t = t.refs
 
+  (** [get_refs_from_table db name] returns the list of opaqueref that are in
+      the database [db] and has [name]. *)
+  let get_refs_from_table db ~(name : string) =
+    match Hashtbl.find_opt db.by_table name with
+    | None -> []
+    | Some l -> l
+
   let from_channel ic =
     let htable : (string, e list) Hashtbl.t = Hashtbl.create 128 in
+    let table_to_ref : (string, string list) Hashtbl.t = Hashtbl.create 64 in
     let input = Xmlm.make_input (`Channel ic) in
     (* The goal of the loop is to fill the Hashtbl where the key is the OpaqueRef
        of an element. An element is basically the row but we will see as we go. *)
@@ -116,6 +134,12 @@ module XapiDb : Db = struct
                           (("table", String tbname) :: elements)
                     | Some _ -> Printf.eprintf "Ref %s is duplicated" ref
                   in
+                  (* And also add the ref to its corresponding table *)
+                  let () =
+                    match Hashtbl.find_opt table_to_ref tbname with
+                    | None -> Hashtbl.add table_to_ref tbname [ ref ]
+                    | Some l -> Hashtbl.add table_to_ref tbname (ref :: l)
+                  in
                   (* We need to add the row because when reaching `El_end we will remove
                      it, and we will have the table on top. It works because we don't have
                      nested element. *)
@@ -136,7 +160,11 @@ module XapiDb : Db = struct
           exit 1)
     in
     read_loop [];
-    { by_ref = htable; refs = htable |> Hashtbl.to_seq_keys |> List.of_seq }
+    {
+      by_ref = htable
+    ; by_table = table_to_ref
+    ; refs = htable |> Hashtbl.to_seq_keys |> List.of_seq
+    }
 end
 
 let _sample_xml : string =
