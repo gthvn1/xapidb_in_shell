@@ -7,7 +7,8 @@ let shrink str =
 
 let print_attributes db ref =
   let l = XapiDb.get_attrs db ~ref in
-  if List.length l = 0 then Printf.printf "OpaqueRef <%s> not found\n" ref
+  if List.compare_length_with l 0 = 0 then
+    Printf.printf "OpaqueRef <%s> not found\n" ref
   else (
     Printf.printf "OpaqueRef %s:\n" ref;
     List.iter (fun e -> Printf.printf "  %s\n" (XapiDb.elt_to_string e)) l)

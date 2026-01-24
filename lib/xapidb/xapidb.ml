@@ -170,7 +170,7 @@ module XapiDb : Db = struct
                     | None ->
                         failwith
                           "table should have been registered when discovered"
-                    | Some l -> Hashtbl.add refs_by_table tbname (ref :: l)
+                    | Some l -> Hashtbl.replace refs_by_table tbname (ref :: l)
                   in
                   (* We need to add the row because when reaching `El_end we will remove
                      it, and we will have the table on top. It works because we don't have
